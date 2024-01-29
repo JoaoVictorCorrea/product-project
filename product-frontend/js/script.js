@@ -5,51 +5,42 @@ function convertToNumber(priceFormat) {
     return priceFormat.replace(/\./g, '').replace(',', '.');
 }
 
-var products = [
-    {
-        id: 1,
-        name: "Computador M1-TX",
-        description: "Intel I7, 16GB, SSD 256, HD 1T",
-        price: 4900,
-        category: 1,
-        promotion: true,
-        new: true
-    },
-    {
-        id: 2,
-        name: "Computador M2-TX",
-        description: "Intel I7, 32GB, SSD 512, HD 1T",
-        price: 5900,
-        category: 2,
-        promotion: false,
-        new: true
-    },
-    {
-        id: 3,
-        name: "Computador M1-T",
-        description: "Intel I5, 16GB, HD 1T",
-        price: 2900,
-        category: 3,
-        promotion: false,
-        new: false
-    },
-];
-
-var categories = [
-    { id: 1, name: "Produção Própria" },
-    { id: 2, name: "Nacional" },
-    { id: 3, name: "Importado" }
-];
-
+//Data
+var products = [];
+var categories = [];
 
 //OnLoad
+loadCategories();
 loadProducts();
 
 //Load all products
+function loadCategories() {
+    
+    $.ajax({
+        url: "http://localhost:8080/categories",
+        type: "GET",
+        async: false,
+        success: (response) => {
+            categories = response;
+
+            for (let categorie of categories) {
+                addNewCategorie(categorie);
+            }
+        }
+    });
+}
+
+//Load all products
 function loadProducts() {
-    for (let product of products) {
-        addNewRow(product);
-    }
+
+    $.getJSON("http://localhost:8080/products", (response) => {
+
+        products = response;
+
+        for (let product of products) {
+            addNewRow(product);
+        }
+    });
 }
 
 //Save a product
@@ -60,16 +51,25 @@ function save() {
         name: document.getElementById("inputName").value,
         description: document.getElementById("inputDescription").value,
         price: convertToNumber(document.getElementById("inputPrice").value),
-        category: document.getElementById("selectCategory").value,
+        category: {
+            id: document.getElementById("selectCategory").value,
+            name: document.getElementById("selectCategory").textContent
+        },
         promotion: document.getElementById("checkBoxPromotion").checked,
-        new: document.getElementById("checkBoxNewProduct").checked
+        newProduct: document.getElementById("checkBoxNewProduct").checked
     };
 
-    addNewRow(product);
-
-    products.push(product);
-
-    document.getElementById("formProduct").reset();
+    $.ajax({
+        url: "http://localhost:8080/products",
+        type: "POST",
+        contentType: "application/json",
+        data: JSON.stringify(product),
+        success: (product) => {
+            addNewRow(product);
+            products.push(product);
+            document.getElementById("formProduct").reset();
+        }
+    });
 }
 
 //Add new Row
@@ -103,7 +103,7 @@ function addNewRow(product) {
     newRow.insertCell().appendChild(priceNode);
 
     //Insert category product
-    var categoryNode = document.createTextNode(categories[product.category - 1].name);
+    var categoryNode = document.createTextNode(categories[product.category.id - 1].name);
     newRow.insertCell().appendChild(categoryNode);
 
     //Insert product options
@@ -114,10 +114,16 @@ function addNewRow(product) {
         options = "<span class='badge bg-success me-1'>P</span>";
     
     //Insert new product
-    if (product.new)
+    if (product.newProduct)
         options += "<span class='badge bg-primary'>L</span>";
     
     cell = newRow.insertCell();
     cell.className = "d-none d-md-table-cell";
     cell.innerHTML = options;
+}
+
+function addNewCategorie(categorie) {
+    var option = new Option(categorie.name, categorie.id);
+    var select = document.getElementById("selectCategory");
+    select.add(option);
 }
